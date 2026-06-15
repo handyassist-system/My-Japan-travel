@@ -785,17 +785,50 @@ function parseRoute(leg){
 /* 內建參考路線（僅在 Google 查無時使用，平日約略、非即時） */
 function builtinRoute(aName,bName){
   const a=aName||"", b=bName||"";
-  const has=(s,arr)=>arr.some(k=>s.indexOf(k)>=0);
-  const pair=(x,y)=>(has(a,x)&&has(b,y))||(has(a,y)&&has(b,x));
-  const train=(line,f,t,m,pass)=>({mode:'train',line:line,from:f,to:t,mins:m,pass:pass||'check'});
+  const hk=(s,arr)=>arr.some(k=>s.indexOf(k)>=0);
+  const train=(line,f,t,m,pass)=>({mode:'train',line:line,from:f,to:t,mins:m,pass:pass||'jr'});
   const bus=(line,f,t,m)=>({mode:'bus',line:line,from:f,to:t,mins:m,pass:'no'});
   const mk=(total,steps)=>({source:'builtin',steps:steps,transfers:Math.max(steps.filter(s=>s.mode!=='walk').length-1,0),buffer:0,totalMin:total});
-  if(pair(['鳥取站','鳥取駅','鳥取'],['砂丘','砂之美術館','砂の']))
-    return mk(25,[bus('日ノ丸/日交 砂丘線巴士','鳥取駅','鳥取砂丘',22)]);
-  if(has(a,['六甲'])||has(b,['六甲']))
-    return mk(45,[train('JR神戸線','三ノ宮','六甲道',6,'jr'),bus('神戸市バス＋六甲ケーブル','六甲道','六甲山上',38)]);
-  if(pair(['有馬'],['三宮','三ノ宮','神戶','神戸','北野','南京']))
-    return mk(45,[bus('阪急/神姫バス（直達）','三宮','有馬温泉',42)]);
+  const OSAKA=['大阪','梅田','難波','道頓堀','通天閣','新世界','海遊館','環球','USJ','心斎橋','天王寺'];
+  const KYOTO=['京都','清水','伏見','稻荷','稲荷','金閣','嵐山','祇園','二条'];
+  const KOBE=['神戶','神戸','三宮','三ノ宮','北野','南京','有馬','舞子','明石','馬賽克','六甲'];
+  const TOTTORI=['鳥取','砂丘','砂之','境港','米子','柯南','青山','由良','倉吉'];
+  const isKIX=s=>hk(s,['KIX','關西','関西']);
+  const isITM=s=>hk(s,['ITM','伊丹']);
+  const isUKB=s=>hk(s,['UKB','神戸空港','神戶 UKB']);
+  const cityOf=s=>hk(s,OSAKA)?'osaka':hk(s,KYOTO)?'kyoto':hk(s,KOBE)?'kobe':hk(s,TOTTORI)?'tottori':null;
+  const pair=(x,y)=>(hk(a,x)&&hk(b,y))||(hk(a,y)&&hk(b,x));
+  // 機場 → 市區
+  let ap=null;
+  if(isKIX(a)) ap={t:'KIX',o:b}; else if(isKIX(b)) ap={t:'KIX',o:a};
+  else if(isITM(a)) ap={t:'ITM',o:b}; else if(isITM(b)) ap={t:'ITM',o:a};
+  else if(isUKB(a)) ap={t:'UKB',o:b}; else if(isUKB(b)) ap={t:'UKB',o:a};
+  if(ap){
+    const c=cityOf(ap.o);
+    if(ap.t==='KIX'){
+      if(c==='osaka') return mk(65,[train('JR 關空快速','關西空港駅','大阪市區',65,'jr')]);
+      if(c==='kyoto') return mk(78,[train('JR 特急 はるか','關西空港駅','京都駅',75,'jr')]);
+      if(c==='kobe')  return mk(68,[bus('關西空港利木津巴士','關西空港','三宮',65)]);
+      if(c==='tottori') return mk(205,[train('JR 特急 はるか','關西空港駅','新大阪',50,'jr'),train('JR 特急 スーパーはくと','大阪','鳥取',150,'jr')]);
+    } else if(ap.t==='ITM'){
+      if(c==='osaka') return mk(35,[bus('大阪單軌＋地鐵','伊丹空港','梅田',35)]);
+      if(c==='kyoto') return mk(55,[bus('利木津巴士','伊丹空港','京都駅',55)]);
+      if(c==='kobe')  return mk(40,[bus('利木津巴士','伊丹空港','三宮',40)]);
+    } else if(ap.t==='UKB'){
+      if(c==='kobe')  return mk(20,[train('Port Liner','神戸空港','三宮',18,'no')]);
+      if(c==='osaka') return mk(45,[train('Port Liner','神戸空港','三宮',18,'no'),train('JR 神戸線 新快速','三ノ宮','大阪',22,'jr')]);
+    }
+  }
+  // 城市之間
+  if(pair(OSAKA,KYOTO)) return mk(33,[train('JR 京都線 新快速','大阪','京都',30,'jr')]);
+  if(pair(OSAKA,KOBE))  return mk(25,[train('JR 神戸線 新快速','大阪','三ノ宮',22,'jr')]);
+  if(pair(KYOTO,KOBE))  return mk(53,[train('JR 新快速','京都','三ノ宮',50,'jr')]);
+  if(pair(OSAKA,['鳥取'])||pair(['大阪'],['鳥取'])) return mk(155,[train('JR 特急 スーパーはくと','大阪','鳥取',150,'jr')]);
+  // 在地接駁
+  if(pair(['鳥取站','鳥取駅','鳥取'],['砂丘','砂之美術館','砂の'])) return mk(25,[bus('日ノ丸/日交 砂丘線巴士','鳥取駅','鳥取砂丘',22)]);
+  if(hk(a,['六甲'])||hk(b,['六甲'])) return mk(45,[train('JR 神戸線','三ノ宮','六甲道',6,'jr'),bus('神戸市バス＋六甲ケーブル','六甲道','六甲山上',38)]);
+  if(pair(['有馬'],['三宮','三ノ宮','神戶','神戸','北野','南京'])) return mk(45,[bus('阪急/神姫巴士','三宮','有馬温泉',42)]);
+  if(pair(['境港','水木'],['米子','鳥取'])) return mk(50,[train('JR 境線','米子','境港',45,'jr')]);
   return null;
 }
 function classifyPass(text){
