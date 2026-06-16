@@ -315,6 +315,7 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
       </div>
 
       <button class="btn map-open" onclick="openMapView()">🗺 在地圖上查看順路</button>
+      <button class="btn map-open" style="background:#7a3b8f;color:#fff" onclick="testGoogleTransit()">🔬 測試 Google 大眾運輸</button>
       <div id="dayContainer"></div>
 
       <div class="card">
@@ -493,7 +494,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v11";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v13";
   buildFlightSelects();
   const s=STATE.settings;
   const setv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
@@ -632,7 +633,8 @@ async function runSearch(){
     });
     box.insertAdjacentHTML("beforeend",manual);
   }catch(e){
-    box.innerHTML=`<p class="empty">搜尋失敗,可直接加入</p>${manual}`;
+    box.innerHTML=`<p class="empty">搜尋失敗:${(e&&e.message)?e.message:e}</p>${manual}`;
+    console.error("searchByText",e);
   }
 }
 
@@ -1184,6 +1186,26 @@ function loadMaps(){
   const s=document.createElement("script");
   s.src=`https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=zh-TW&region=JP&callback=__onMaps`;
   s.async=true; document.head.appendChild(s);
+}
+/* ============ 測試 Google 交通 ============ */
+function testGoogleTransit(){
+  if(!MAPS_READY){ alert("地圖尚未載入,稍候再試"); return; }
+  let pts=[]; STATE.days.forEach(d=>d.items.forEach(it=>{ if(it.lat!=null&&it.lng!=null) pts.push(it); }));
+  if(pts.length<2){ alert("需要至少兩個有座標的景點。\n請先用「搜尋」加入景點,或先開一次地圖讓它自動定位。"); return; }
+  const a=pts[0], b=pts[1];
+  alert("開始測試:\n"+a.name+" → "+b.name+"\n(結果稍候跳出)");
+  const ds=new google.maps.DirectionsService();
+  ds.route({origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:google.maps.TravelMode.TRANSIT,region:"jp",transitOptions:{departureTime:depTime()}},(res,status)=>{
+    let msg="🔬 "+a.name+" → "+b.name+"\n狀態碼:"+status+"\n";
+    if(status==="OK"&&res&&res.routes[0]){
+      const leg=res.routes[0].legs[0];
+      msg+="✅ Google 有帶出!總時間:"+leg.duration.text+"\n";
+      leg.steps.forEach(s=>{ if(s.travel_mode==="TRANSIT"&&s.transit){ msg+="🚆 "+s.transit.line.name+" "+s.transit.departure_stop.name+"→"+s.transit.arrival_stop.name+"\n"; } else { msg+="🚶 步行 "+s.duration.text+"\n"; } });
+    } else if(status==="ZERO_RESULTS"){ msg+="❌ Google 查不到大眾運輸(日本 API 限制,證實只能用內建)";
+    } else if(status==="REQUEST_DENIED"){ msg+="⚠️ Directions API 沒啟用或金鑰沒授權";
+    } else { msg+="其他狀況,截圖給我看"; }
+    alert(msg);
+  });
 }
 /* ============ 順路地圖 ============ */
 let _map=null,_markers=[],_lines=[],_geocoder=null,_mapDay='all';
