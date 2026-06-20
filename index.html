@@ -92,6 +92,10 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 .result-row .addr{font-size:11.5px;color:var(--muted)}
 
 .day-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.day-tabs{display:flex;gap:6px;overflow-x:auto;padding:8px 2px 10px;margin-bottom:4px;-webkit-overflow-scrolling:touch;position:sticky;top:0;background:var(--paper);z-index:5}
+.day-tabs::-webkit-scrollbar{display:none}
+.day-tab{flex:0 0 auto;padding:7px 14px;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.day-tab.active{background:var(--indigo);color:#fff;border-color:var(--indigo)}
 .day-tag{font-family:"Shippori Mincho",serif;font-size:20px;color:var(--indigo)}
 .day-date{font-size:12px;color:var(--muted);margin-left:8px}
 .day-start{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-weight:600;flex-shrink:0}
@@ -185,7 +189,8 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 .seg-r1,.seg-r2,.seg-r3{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:2px 0}
 .seg-ic{font-size:14px}
 .seg-mode{padding:4px;border:1px solid var(--line);border-radius:6px;font-size:12px}
-.seg-line{flex:1;min-width:90px;padding:4px;border:1px solid var(--line);border-radius:6px;font-size:12px}
+.seg-line{width:100%;box-sizing:border-box;padding:5px;border:1px solid var(--line);border-radius:6px;font-size:12.5px}
+.seg-r1b{margin:3px 0}
 .seg-st{flex:1;min-width:70px;padding:4px;border:1px solid var(--line);border-radius:6px;font-size:12px}
 .seg-dep{width:64px;padding:4px;border:1px solid var(--line);border-radius:6px;text-align:center;font-size:12px}
 .seg-min{width:48px;padding:4px;border:1px solid var(--line);border-radius:6px;text-align:center;font-size:12px}
@@ -249,7 +254,13 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 .to-manual{display:block;width:100%;margin:8px 0 0;padding:8px;border:1px dashed var(--line);border-radius:8px;background:#fff;color:var(--indigo);font-size:12.5px;font-weight:600}
 .mseg-done{display:block;width:100%;margin:8px 0 0;padding:10px;border:none;border-radius:8px;background:var(--indigo);color:#fff;font-size:13.5px;font-weight:700}
 .tw-card{margin:0 0 12px;padding:11px 12px;border:1px solid var(--indigo-soft);background:var(--paper-2);border-radius:10px}
-.tw-title{font-size:12.5px;font-weight:700;color:var(--indigo);margin-bottom:8px}
+.tw-title{font-size:12.5px;font-weight:700;color:var(--indigo)}
+.fl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.fl-edit{font-size:11px;font-weight:600;color:var(--indigo);background:#fff;border:1px solid var(--indigo-soft);border-radius:7px;padding:4px 10px;cursor:pointer}
+.fl-line{font-size:13.5px;color:var(--ink);line-height:1.6}
+.fl-line b{color:var(--indigo)}
+.fl-sub{font-size:11.5px;color:var(--muted);margin-top:5px;border-top:1px dashed var(--line);padding-top:6px;line-height:1.6}
+.fl-empty{color:var(--warn);font-weight:600}
 .tw-fields{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .tw-fields label{font-size:12px;color:var(--ink);display:flex;align-items:center;gap:4px}
 .tw-fields input{width:62px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;font-size:12.5px}
@@ -291,12 +302,14 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 .list-cat{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
 .list-cat-title{font-size:16px;color:var(--indigo)}
 .list-prog{font-size:12px;color:var(--muted);font-weight:700}
-.check-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.check-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
 .check-row:last-of-type{border-bottom:none}
 .check-box{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
 .check-row.done .check-box{background:var(--jr);border-color:var(--jr)}
 .check-text{flex:1;font-size:14px}
 .check-row.done .check-text{text-decoration:line-through;color:var(--muted)}
+.check-ord{display:inline-flex;gap:2px;flex-shrink:0}
+.check-ord button{border:1px solid var(--line);background:#fff;color:var(--indigo);border-radius:5px;width:24px;height:24px;font-size:12px;line-height:1;cursor:pointer;padding:0}
 .check-del{color:var(--line);font-size:13px;width:26px;height:26px;border-radius:6px;flex-shrink:0}
 .check-del:active{color:var(--warn)}
 .add-row{display:flex;gap:8px;margin-top:12px}
@@ -355,53 +368,7 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 
   <div class="wrap">
     <!-- 行程 -->
-    <div id="view-trip">
-      <div class="card">
-        <div class="eyebrow">行程資訊・航班</div>
-        <div class="grid2">
-          <div><label class="lbl">出發日期</label><input id="departDate" type="date" class="field" onchange="onSettingChange()" /></div>
-          <div><label class="lbl">回程日期</label><input id="returnDate" type="date" class="field" onchange="onSettingChange()" /></div>
-        </div>
-        <div id="tripLen" class="trip-len"></div>
-
-        <div class="sub-h">✈️ 去程（台灣 → 日本）</div>
-        <div class="grid2">
-          <div><label class="lbl">航空公司</label><select id="outAirline" class="field" onchange="onSettingChange()"></select></div>
-          <div><label class="lbl">班機號碼</label><input id="outFlightNo" class="field" placeholder="如 BR132" onchange="onSettingChange()" /></div>
-        </div>
-        <div class="grid2">
-          <div><label class="lbl">出發機場（台）</label><select id="outFromAirport" class="field" onchange="onSettingChange()"></select></div>
-          <div><label class="lbl">抵達機場（日）</label><select id="outToAirport" class="field" onchange="onSettingChange()"></select></div>
-        </div>
-        <div class="grid2">
-          <div><label class="lbl">起飛時間（台·24h）</label><input id="outDepartTime" type="text" inputmode="numeric" maxlength="5" class="field" value="08:00" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
-          <div><label class="lbl">抵達時間（日·24h）</label><input id="arriveTime" type="text" inputmode="numeric" maxlength="5" class="field" value="15:30" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
-        </div>
-        <div class="grid2">
-          <div><label class="lbl">家→機場（分）</label><input id="homeToAirport" type="number" class="field" value="60" onchange="onSettingChange()" /></div>
-          <div></div>
-        </div>
-
-        <div class="sub-h">✈️ 回程（日本 → 台灣）</div>
-        <div class="grid2">
-          <div><label class="lbl">航空公司</label><select id="retAirline" class="field" onchange="onSettingChange()"></select></div>
-          <div><label class="lbl">班機號碼</label><input id="retFlightNo" class="field" placeholder="如 BR133" onchange="onSettingChange()" /></div>
-        </div>
-        <div class="grid2">
-          <div><label class="lbl">出發機場（日）</label><select id="retFromAirport" class="field" onchange="onSettingChange()"></select></div>
-          <div><label class="lbl">抵達機場（台）</label><select id="retToAirport" class="field" onchange="onSettingChange()"></select></div>
-        </div>
-        <div class="grid2">
-          <div><label class="lbl">起飛時間（24h）</label><input id="departFlight" type="text" inputmode="numeric" maxlength="5" class="field" value="18:00" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
-          <div></div>
-        </div>
-
-        <div class="sub-h">⏱ 緩衝時間</div>
-        <div class="grid2">
-          <div><label class="lbl">報到提前（分）</label><input id="checkinBuffer" type="number" class="field" value="120" onchange="onSettingChange()" /></div>
-        </div>
-      </div>
-
+    <div id="view-trip" class="hidden">
       <button class="btn map-open" onclick="openMapView()">🗺 在地圖上查看順路</button>
       <div id="dayContainer"></div>
 
@@ -448,16 +415,66 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
         <p id="statusCode" style="font-size:12px;color:var(--muted);margin:0"></p>
       </div>
     </div>
+    <!-- 航班 -->
+    <div id="view-flight">
+      <div class="card">
+        <div class="eyebrow">行程資訊・航班</div>
+        <div class="grid2">
+          <div><label class="lbl">出發日期</label><input id="departDate" type="date" class="field" onchange="onSettingChange()" /></div>
+          <div><label class="lbl">回程日期</label><input id="returnDate" type="date" class="field" onchange="onSettingChange()" /></div>
+        </div>
+        <div id="tripLen" class="trip-len"></div>
+
+        <div class="sub-h">✈️ 去程（台灣 → 日本）</div>
+        <div class="grid2">
+          <div><label class="lbl">航空公司</label><select id="outAirline" class="field" onchange="onSettingChange()"></select></div>
+          <div><label class="lbl">班機號碼</label><input id="outFlightNo" class="field" placeholder="如 BR132" onchange="onSettingChange()" /></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">出發機場（台）</label><select id="outFromAirport" class="field" onchange="onSettingChange()"></select></div>
+          <div><label class="lbl">抵達機場（日）</label><select id="outToAirport" class="field" onchange="onSettingChange()"></select></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">起飛時間（台·24h）</label><input id="outDepartTime" type="text" inputmode="numeric" maxlength="5" class="field" value="08:00" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
+          <div><label class="lbl">抵達時間（日·24h）</label><input id="arriveTime" type="text" inputmode="numeric" maxlength="5" class="field" value="15:30" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">家→機場（分）</label><input id="homeToAirport" type="number" class="field" value="60" onchange="onSettingChange()" /></div>
+          <div></div>
+        </div>
+
+        <div class="sub-h">✈️ 回程（日本 → 台灣）</div>
+        <div class="grid2">
+          <div><label class="lbl">航空公司</label><select id="retAirline" class="field" onchange="onSettingChange()"></select></div>
+          <div><label class="lbl">班機號碼</label><input id="retFlightNo" class="field" placeholder="如 BR133" onchange="onSettingChange()" /></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">出發機場（日）</label><select id="retFromAirport" class="field" onchange="onSettingChange()"></select></div>
+          <div><label class="lbl">抵達機場（台）</label><select id="retToAirport" class="field" onchange="onSettingChange()"></select></div>
+        </div>
+        <div class="grid2">
+          <div><label class="lbl">起飛時間（24h）</label><input id="departFlight" type="text" inputmode="numeric" maxlength="5" class="field" value="18:00" placeholder="HH:MM" onchange="this.value=normTime(this.value);onSettingChange()" /></div>
+          <div></div>
+        </div>
+
+        <div class="sub-h">⏱ 緩衝時間</div>
+        <div class="grid2">
+          <div><label class="lbl">報到提前（分）</label><input id="checkinBuffer" type="number" class="field" value="120" onchange="onSettingChange()" /></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="mapView" class="map-view hidden">
     <div class="map-head"><span class="map-title">🗺 順路地圖</span><button class="close-x" onclick="closeMapView()">×</button></div>
     <div id="mapCanvas" class="map-canvas"></div>
     <div id="mapStrip" class="map-strip"></div>
+
   </div>
 
   <div class="bottombar">
-    <button id="nav-trip" class="active" onclick="switchView('trip')"><span class="ic">🗓</span>行程</button>
+    <button id="nav-flight" class="active" onclick="switchView('flight')"><span class="ic">✈️</span>航班</button>
+    <button id="nav-trip" onclick="switchView('trip')"><span class="ic">🗓</span>行程</button>
     <button id="nav-list" onclick="switchView('list')"><span class="ic">✅</span>清單</button>
     <button id="nav-set" onclick="switchView('set')"><span class="ic">⚙</span>設定</button>
   </div>
@@ -591,7 +608,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v46";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v53";
   buildFlightSelects();
   const s=STATE.settings;
   const setv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
@@ -645,8 +662,10 @@ function buildFlightSelects(){
 }
 
 /* ============ 分頁 ============ */
+let DAY_TAB=0;
+function setDayTab(t){ DAY_TAB=t; renderDays(); }
 function switchView(v){
-  ["trip","list","set"].forEach(x=>{
+  ["trip","flight","list","set"].forEach(x=>{
     document.getElementById("view-"+x).classList.toggle("hidden", x!==v);
     document.getElementById("nav-"+x).classList.toggle("active", x===v);
   });
@@ -676,7 +695,7 @@ function updateTripLen(){
   const s=STATE.settings;
   if(s.departDate&&s.returnDate&&STATE.days.length){
     el.textContent=`共 ${STATE.days.length} 天　${dayDate(0)} – ${dayDate(STATE.days.length-1)}`;
-  } else { el.textContent="填入出發與回程日期，自動帶出每一天"; }
+  } else { el.textContent="到「✈️ 航班」頁填入出發與回程日期"; }
 }
 
 /* ============ 景點清單 ============ */
@@ -947,7 +966,8 @@ function renderLegEditor(di,ii,r){
     const rH=(s.mins!==''&&s.mins!=null)?Math.floor(Number(s.mins)/60):'';
     const rM=(s.mins!==''&&s.mins!=null)?Number(s.mins)%60:'';
     return `<div class="seg seg-veh">
-      <div class="seg-r1"><span class="seg-ic">${ic}</span><select class="seg-mode" onchange="setSeg(${di},${ii},${idx},'mode',this.value)"><option value="train"${s.mode==='train'?' selected':''}>電車</option><option value="bus"${s.mode==='bus'?' selected':''}>公車</option><option value="cable"${s.mode==='cable'?' selected':''}>纜車</option><option value="walk">走路</option></select><select class="seg-line" onchange="setSeg(${di},${ii},${idx},'line',this.value)">${lineOpts(s.line)}</select><span class="seg-ord"><button onclick="moveSeg(${di},${ii},${idx},-1)">↑</button><button onclick="moveSeg(${di},${ii},${idx},1)">↓</button></span><button class="seg-del" onclick="delSeg(${di},${ii},${idx})">✕</button></div>
+      <div class="seg-r1"><span class="seg-ic">${ic}</span><select class="seg-mode" onchange="setSeg(${di},${ii},${idx},'mode',this.value)"><option value="train"${s.mode==='train'?' selected':''}>電車</option><option value="bus"${s.mode==='bus'?' selected':''}>公車</option><option value="cable"${s.mode==='cable'?' selected':''}>纜車</option><option value="walk">走路</option></select><span class="seg-ord"><button onclick="moveSeg(${di},${ii},${idx},-1)">↑</button><button onclick="moveSeg(${di},${ii},${idx},1)">↓</button></span><button class="seg-del" onclick="delSeg(${di},${ii},${idx})">✕</button></div>
+      <div class="seg-r1b"><select class="seg-line" onchange="setSeg(${di},${ii},${idx},'line',this.value)">${lineOpts(s.line)}</select></div>
       <div class="seg-r2"><select class="seg-st" onchange="setSeg(${di},${ii},${idx},'from',this.value)">${stOpts(s.from)}</select>→<select class="seg-st" onchange="setSeg(${di},${ii},${idx},'to',this.value)">${stOpts(s.to)}</select></div>
       <div class="seg-r3"><span class="seg-lb">發車</span><select class="seg-sel" onchange="setSegDep(${di},${ii},${idx},'h',this.value)">${hOpts(dH,23)}</select>:<select class="seg-sel" onchange="setSegDep(${di},${ii},${idx},'m',this.value)">${mOpts(dM)}</select></div>
       <div class="seg-r3"><span class="seg-lb">乘車</span><select class="seg-sel" onchange="setSegRide(${di},${ii},${idx},'h',this.value)">${hOpts(rH,9)}</select>時<select class="seg-sel" onchange="setSegRide(${di},${ii},${idx},'m',this.value)">${mOpts(rM)}</select>分</div>
@@ -1022,8 +1042,14 @@ function renderSpotNote(di,ii,it){
 function renderDays(){
   const c=document.getElementById("dayContainer"); c.innerHTML="";
   const s=STATE.settings, last=STATE.days.length-1;
-  if(!STATE.days.length){ c.innerHTML=`<div class="card"><div class="empty">在上方填入出發與回程日期，自動帶出每一天</div></div>`; return; }
+  if(!STATE.days.length){ c.innerHTML=`<div class="card"><div class="empty">請到「✈️ 航班」頁到「✈️ 航班」頁填入出發與回程日期</div></div>`; return; }
+  if(typeof DAY_TAB==="number" && DAY_TAB>last) DAY_TAB=0;
+  const tabs=document.createElement("div"); tabs.className="day-tabs";
+  let th=`<button class="day-tab${DAY_TAB==="all"?" active":""}" onclick="setDayTab('all')">全部</button>`;
+  STATE.days.forEach((d,i)=>{ th+=`<button class="day-tab${DAY_TAB===i?" active":""}" onclick="setDayTab(${i})">Day${i+1}</button>`; });
+  tabs.innerHTML=th; c.appendChild(tabs);
   STATE.days.forEach((day,di)=>{
+    if(DAY_TAB!=="all" && di!==DAY_TAB) return;
     const card=document.createElement("div"); card.className="card";
     const dstr=dayDate(di);
     const head=document.createElement("div"); head.className="day-head";
@@ -1033,13 +1059,10 @@ function renderDays(){
 
     if(di===0){
       const tw=document.createElement("div"); tw.className="tw-card";
-      tw.innerHTML=`<div class="tw-title">🛫 出發日（台灣端）</div>
-        <div class="tw-fields">
-          <label>家→機場 <input type="number" value="${s.homeToAirport!=null?s.homeToAirport:60}" onchange="setTwField('homeToAirport',this.value)"> 分</label>
-          <label>起飛 <input type="text" inputmode="numeric" maxlength="5" style="width:62px" value="${s.outDepartTime||'08:00'}" placeholder="HH:MM" onchange="this.value=normTime(this.value);setTwField('outDepartTime',this.value)"></label>
-          <label>報到緩衝 <input type="number" value="${s.checkinBuffer!=null?s.checkinBuffer:120}" onchange="setTwField('checkinBuffer',this.value)"> 分</label>
-        </div>
-        <div class="tw-calc">🏠 <b>${day._homeDepart||'--:--'}</b> 從家出發 → ✈️ <b>${day._twAirportArrive||'--:--'}</b> 到 ${AIRPORTS[s.outFromAirport]?AIRPORTS[s.outFromAirport].name:s.outFromAirport} → ${s.outFlightNo?s.outFlightNo+' ':''}${s.outDepartTime||''} 起飛 → 🛬 ${s.arriveTime||''} 抵達 ${AIRPORTS[s.outToAirport]?AIRPORTS[s.outToAirport].name:s.outToAirport}</div>`;
+      const apN=x=>AIRPORTS[x]?AIRPORTS[x].name:(x||'');
+      tw.innerHTML=`<div class="fl-head"><span class="tw-title">🛫 去程航班</span><button class="fl-edit" onclick="switchView('flight')">✎ 編輯航班</button></div>
+        <div class="fl-line">✈️ ${s.outFlightNo||'<span class=fl-empty>未填班次</span>'}　${apN(s.outFromAirport)} <b>${s.outDepartTime||'--:--'}</b> → ${apN(s.outToAirport)} <b>${s.arriveTime||'--:--'}</b></div>
+        <div class="fl-sub">🏠 建議 <b>${day._homeDepart||'--:--'}</b> 出門 · 到機場 ${day._twAirportArrive||'--:--'} · 報到緩衝 ${s.checkinBuffer!=null?s.checkinBuffer:120} 分</div>`;
       card.appendChild(tw);
     }
 
@@ -1077,6 +1100,14 @@ function renderDays(){
     }
     const addBtn=document.createElement("button"); addBtn.className="btn ghost add-spot-btn"; addBtn.textContent="＋ 加景點"; addBtn.onclick=()=>openAddSheet(di);
     card.appendChild(addBtn);
+    if(di===STATE.days.length-1 && (s.retFlightNo||s.departFlight)){
+      const apN=x=>AIRPORTS[x]?AIRPORTS[x].name:(x||'');
+      const rt=document.createElement("div"); rt.className="tw-card";
+      rt.innerHTML=`<div class="fl-head"><span class="tw-title">🛬 回程航班</span><button class="fl-edit" onclick="switchView('flight')">✎ 編輯航班</button></div>
+        <div class="fl-line">✈️ ${s.retFlightNo||'<span class=fl-empty>未填班次</span>'}　${apN(s.retFromAirport)} <b>${s.departFlight||'--:--'}</b> 起飛 → ${apN(s.retToAirport)}</div>
+        <div class="fl-sub">🛂 報到截止 <b>${day._airportOutDeadline||'--:--'}</b> · 報到提前 ${s.checkinBuffer!=null?s.checkinBuffer:120} 分</div>`;
+      card.appendChild(rt);
+    }
     c.appendChild(card);
   });
 }
@@ -1395,6 +1426,7 @@ function renderChecklist(){
       const row=document.createElement("div"); row.className="check-row"+(it.done?" done":"");
       row.innerHTML=`<button class="check-box" onclick="toggleCheck(${ci},${ii})">${it.done?"✓":""}</button>
         <span class="check-text">${it.text}</span>
+        <span class="check-ord"><button onclick="moveCheckItem(${ci},${ii},-1)">↑</button><button onclick="moveCheckItem(${ci},${ii},1)">↓</button></span>
         <button class="check-del" onclick="delCheckItem(${ci},${ii})">✕</button>`;
       card.appendChild(row);
     });
@@ -1407,6 +1439,7 @@ function renderChecklist(){
 function toggleCheck(ci,ii){ STATE.checklist[ci].items[ii].done=!STATE.checklist[ci].items[ii].done; renderChecklist(); scheduleSave(); }
 function addCheckItem(ci){ const el=document.getElementById("addc-"+ci); const v=(el.value||"").trim(); if(!v) return; STATE.checklist[ci].items.push({text:v,done:false}); renderChecklist(); scheduleSave(); }
 function delCheckItem(ci,ii){ STATE.checklist[ci].items.splice(ii,1); renderChecklist(); scheduleSave(); }
+function moveCheckItem(ci,ii,dir){ const arr=STATE.checklist[ci].items; const j=ii+dir; if(j<0||j>=arr.length) return; const t=arr[ii]; arr[ii]=arr[j]; arr[j]=t; renderChecklist(); scheduleSave(); }
 
 /* ============ 狀態 / 提示 ============ */
 function updateStatus(){
@@ -1447,6 +1480,17 @@ async function loadData(code){
 }
 function sanitizeUIFlags(){
   (STATE.days||[]).forEach(day=>(day.items||[]).forEach(it=>{ it._legEdit=false; it._noteEdit=false; it._legOpen=false; }));
+  applyBuiltinsToEmpty();
+}
+function applyBuiltinsToEmpty(){
+  (STATE.days||[]).forEach(day=>(day.items||[]).forEach((it,ii)=>{
+    if(ii>=day.items.length-1) return;
+    const r=it._route, empty=!r||!r.steps||!r.steps.length||r.source==='none'||r._auto;
+    if(empty && !(r&&r._userEdited)){
+      const nx=day.items[ii+1]; const b=nx?builtinRoute(it.name,nx.name):null;
+      if(b){ it._route=b; it._walkMin=null; it._rideMin=null; }
+    }
+  }));
 }
 
 /* ============ 授權碼驗證 ============ */
