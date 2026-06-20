@@ -45,6 +45,20 @@ input,select{font-family:inherit;font-size:16px}
 .brand .sub{font-size:10.5px;opacity:.7;letter-spacing:1px}
 .pass-chip{font-size:11px;background:rgba(255,255,255,.14);padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.2)}
 .save-status{font-size:10px;opacity:.8;margin-top:5px;text-align:right}
+.trip-sel{margin-top:5px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);color:#fff;font-size:12px;font-weight:700;padding:3px 11px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;max-width:200px}
+.trip-sel #tripName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.trip-sel .caret{font-size:9px;opacity:.85}
+.trip-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:40}
+.trip-menu{position:fixed;top:62px;left:12px;right:12px;max-width:360px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.2);z-index:41;padding:8px;max-height:74vh;overflow:auto}
+.trip-menu-h{font-size:11px;color:var(--muted);font-weight:700;padding:5px 8px 3px}
+.trip-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:11px 10px;border-radius:9px;background:#fff;border:none;cursor:pointer;font-size:14.5px;font-weight:700;color:var(--ink)}
+.trip-item.active{background:var(--paper-2)}
+.trip-item .trip-tick{width:15px;color:var(--indigo);font-weight:800;flex-shrink:0}
+.trip-item .trip-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trip-menu-sep{height:1px;background:var(--line);margin:7px 4px}
+.trip-act{display:block;width:100%;text-align:left;padding:11px 10px;border:none;background:#fff;border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--ink)}
+.trip-act.danger{color:var(--warn)}
+.trip-act:active,.trip-item:active{background:var(--paper-2)}
 
 .wrap{max-width:680px;margin:0 auto;padding:16px 16px 120px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
@@ -358,12 +372,23 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
   <div class="topbar">
     <div class="brand">
       <div class="logo"><svg viewBox="0 0 24 24" width="17" height="17" fill="#fff"><path d="M22 12a1.3 1.3 0 0 0-1.3-1.3h-5.4L9.6 3.2H7.8l2.8 7.5H5.1L3.5 8.6H2.1l1.1 3.4-1.1 3.4h1.4l1.6-2.1h5.5L7.8 20.8h1.8l5.7-7.5h5.4A1.3 1.3 0 0 0 22 12z"/></svg></div>
-      <div><h1 class="mincho">日本旅遊計畫</h1><div class="sub" id="modeLabel">DEMO</div></div>
+      <div><h1 class="mincho">日本旅遊計畫</h1><div class="sub" id="modeLabel">DEMO</div><button class="trip-sel" onclick="toggleTripMenu(event)">目前：<span id="tripName">—</span> <span class="caret">▾</span></button></div>
     </div>
     <div style="text-align:right">
       <div class="pass-chip">JR 廣域 Pass</div>
       <div id="saveStatus" class="save-status"></div>
     </div>
+  </div>
+
+  <div id="tripBackdrop" class="trip-backdrop hidden" onclick="closeTripMenu()"></div>
+  <div id="tripMenu" class="trip-menu hidden">
+    <div class="trip-menu-h">切換行程</div>
+    <div id="tripList"></div>
+    <div class="trip-menu-sep"></div>
+    <button class="trip-act" onclick="addTrip()">＋ 新增行程</button>
+    <button class="trip-act" onclick="dupTrip()">📋 複製這本</button>
+    <button class="trip-act" onclick="renameTrip()">✏️ 改名目前行程</button>
+    <button class="trip-act danger" onclick="delTrip()">🗑 刪除目前行程</button>
   </div>
 
   <div class="wrap">
@@ -535,17 +560,19 @@ const DEFAULT_CHECKLIST=[
 ];
 
 /* ============ 狀態 ============ */
+const DEFAULT_SETTINGS = {
+  departDate:"2026-10-15", returnDate:"2026-10-19",
+  outAirline:"長榮 BR", outFlightNo:"", outFromAirport:"TPE", outToAirport:"KIX", outDepartTime:"08:00", arriveTime:"15:30", homeToAirport:60,
+  retAirline:"長榮 BR", retFlightNo:"", retFromAirport:"KIX", retToAirport:"TPE", departFlight:"18:00",
+  entryBuffer:90, checkinBuffer:120
+};
 const STATE = {
   demo:true, code:null,
-  settings:{
-    departDate:"2026-10-15", returnDate:"2026-10-19",
-    outAirline:"長榮 BR", outFlightNo:"", outFromAirport:"TPE", outToAirport:"KIX", outDepartTime:"08:00", arriveTime:"15:30", homeToAirport:60,
-    retAirline:"長榮 BR", retFlightNo:"", retFromAirport:"KIX", retToAirport:"TPE", departFlight:"18:00",
-    entryBuffer:90, checkinBuffer:120
-  },
+  settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   days:[],
   checklist: JSON.parse(JSON.stringify(DEFAULT_CHECKLIST)),
-  pendingSpot:null
+  pendingSpot:null,
+  trips:null, activeId:null
 };
 let MAPS_READY=false, FB_READY=false;
 const hasMapsKey = GOOGLE_MAPS_API_KEY && !GOOGLE_MAPS_API_KEY.startsWith("YOUR_");
@@ -608,18 +635,12 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v53";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v54";
   buildFlightSelects();
-  const s=STATE.settings;
-  const setv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
-  setv("departDate",s.departDate||""); setv("returnDate",s.returnDate||"");
-  setv("outAirline",s.outAirline); setv("outFlightNo",s.outFlightNo); setv("outFromAirport",s.outFromAirport);
-  setv("outToAirport",s.outToAirport); setv("outDepartTime",s.outDepartTime); setv("arriveTime",s.arriveTime); setv("homeToAirport",s.homeToAirport);
-  setv("retAirline",s.retAirline); setv("retFromAirport",s.retFromAirport);
-  setv("retToAirport",s.retToAirport); setv("retFlightNo",s.retFlightNo); setv("departFlight",s.departFlight);
-  setv("checkinBuffer",s.checkinBuffer);
-  buildCityTabs(); renderSpots(); renderChecklist();
-  syncDays(); seedAirports(); autofillBuiltin(); recompute(); updateStatus(); initSaveStatus();
+  buildCityTabs();
+  ensureTrips();
+  refreshAllFromState();
+  updateStatus(); initSaveStatus();
 }
 function autofillBuiltin(){
   STATE.days.forEach(day=>{
@@ -1455,6 +1476,48 @@ function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg
 let saveTimer=null;
 function initSaveStatus(){ setSaveStatus(STATE.demo?"示範・不儲存":(FB_READY?"已連線":"未連線")); }
 function setSaveStatus(t){ const el=document.getElementById("saveStatus"); if(el) el.textContent=t; }
+/* ============ 多行程 ============ */
+function genId(){ return 't'+Date.now().toString(36)+Math.floor(Math.random()*1000); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function newTripObj(name){ return { id:genId(), name:name||"新行程", days:[], checklist:JSON.parse(JSON.stringify(DEFAULT_CHECKLIST)), settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) }; }
+function getActiveTrip(){ return (STATE.trips||[]).find(t=>t.id===STATE.activeId)||null; }
+function ensureTrips(){
+  if(!STATE.trips||!STATE.trips.length){
+    const t=newTripObj("我的行程"); t.days=STATE.days; t.checklist=STATE.checklist; t.settings=STATE.settings;
+    STATE.trips=[t]; STATE.activeId=t.id;
+  }
+  if(!getActiveTrip()) STATE.activeId=STATE.trips[0].id;
+}
+function syncActiveFromState(){ const t=getActiveTrip(); if(!t) return; t.days=STATE.days; t.checklist=STATE.checklist; t.settings=STATE.settings; }
+function loadActiveIntoState(){
+  const t=getActiveTrip(); if(!t) return;
+  STATE.days = Array.isArray(t.days)? t.days : [];
+  STATE.checklist = Array.isArray(t.checklist)? t.checklist : JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
+  STATE.settings = Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), t.settings||{});
+  t.days=STATE.days; t.checklist=STATE.checklist; t.settings=STATE.settings;
+  sanitizeUIFlags();
+}
+function refreshAllFromState(){
+  const s=STATE.settings;
+  const setv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v==null?"":v); };
+  setv("departDate",s.departDate||""); setv("returnDate",s.returnDate||"");
+  setv("outAirline",s.outAirline); setv("outFlightNo",s.outFlightNo); setv("outFromAirport",s.outFromAirport);
+  setv("outToAirport",s.outToAirport); setv("outDepartTime",s.outDepartTime); setv("arriveTime",s.arriveTime); setv("homeToAirport",s.homeToAirport);
+  setv("retAirline",s.retAirline); setv("retFromAirport",s.retFromAirport);
+  setv("retToAirport",s.retToAirport); setv("retFlightNo",s.retFlightNo); setv("departFlight",s.departFlight);
+  setv("checkinBuffer",s.checkinBuffer);
+  renderSpots(); renderChecklist(); syncDays(); seedAirports(); autofillBuiltin(); recompute(); renderTripName();
+}
+function renderTripName(){ const t=getActiveTrip(); const el=document.getElementById("tripName"); if(el) el.textContent = t? t.name : "—"; }
+function toggleTripMenu(e){ if(e){e.stopPropagation();} const m=document.getElementById("tripMenu"); if(m.classList.contains("hidden")){ renderTripList(); m.classList.remove("hidden"); document.getElementById("tripBackdrop").classList.remove("hidden"); } else closeTripMenu(); }
+function closeTripMenu(){ const m=document.getElementById("tripMenu"), b=document.getElementById("tripBackdrop"); if(m)m.classList.add("hidden"); if(b)b.classList.add("hidden"); }
+function renderTripList(){ const box=document.getElementById("tripList"); if(!box) return; box.innerHTML=(STATE.trips||[]).map(t=>`<button class="trip-item${t.id===STATE.activeId?' active':''}" onclick="switchTrip('${t.id}')"><span class="trip-tick">${t.id===STATE.activeId?'✓':''}</span><span class="trip-nm">${escapeHtml(t.name)}</span></button>`).join(""); }
+function switchTrip(id){ if(id===STATE.activeId){ closeTripMenu(); return; } syncActiveFromState(); STATE.activeId=id; loadActiveIntoState(); DAY_TAB=0; refreshAllFromState(); closeTripMenu(); scheduleSave(); }
+function addTrip(){ const name=(prompt("新行程名稱：","新行程")||"").trim(); if(!name) return; syncActiveFromState(); const t=newTripObj(name); STATE.trips.push(t); STATE.activeId=t.id; loadActiveIntoState(); DAY_TAB=0; refreshAllFromState(); closeTripMenu(); scheduleSave(); }
+function dupTrip(){ const cur=getActiveTrip(); if(!cur) return; syncActiveFromState(); const copy=JSON.parse(JSON.stringify(cur)); copy.id=genId(); copy.name=cur.name+" 複本"; STATE.trips.push(copy); STATE.activeId=copy.id; loadActiveIntoState(); DAY_TAB=0; refreshAllFromState(); closeTripMenu(); scheduleSave(); }
+function renameTrip(){ const t=getActiveTrip(); if(!t) return; const name=(prompt("行程改名：",t.name)||"").trim(); if(!name) return; t.name=name; renderTripName(); renderTripList(); scheduleSave(); }
+function delTrip(){ if((STATE.trips||[]).length<=1){ alert("至少要保留一本行程，無法刪除。"); return; } const t=getActiveTrip(); if(!t) return; if(!confirm("確定刪除「"+t.name+"」？此動作無法復原。")) return; STATE.trips=STATE.trips.filter(x=>x.id!==t.id); STATE.activeId=STATE.trips[0].id; loadActiveIntoState(); DAY_TAB=0; refreshAllFromState(); closeTripMenu(); scheduleSave(); }
+
 function scheduleSave(){
   if(STATE.demo){ setSaveStatus("示範・不儲存"); return; }
   if(!FB_READY||!STATE.code){ setSaveStatus("未連線"); return; }
@@ -1462,7 +1525,8 @@ function scheduleSave(){
 }
 async function saveData(){
   try{
-    const clean=JSON.parse(JSON.stringify({days:STATE.days,checklist:STATE.checklist,settings:STATE.settings,updatedAt:Date.now()}));
+    syncActiveFromState();
+    const clean=JSON.parse(JSON.stringify({activeId:STATE.activeId, trips:STATE.trips, updatedAt:Date.now()}));
     await firebase.firestore().collection("jpUserData").doc(STATE.code).set(clean);
     setSaveStatus("已儲存 ✓");
   }catch(e){ setSaveStatus("儲存失敗，稍後重試"); }
@@ -1471,12 +1535,19 @@ async function loadData(code){
   try{
     const snap=await firebase.firestore().collection("jpUserData").doc(code).get();
     if(snap.exists){ const d=snap.data();
-      if(Array.isArray(d.days)) STATE.days=d.days;
-      if(Array.isArray(d.checklist)) STATE.checklist=d.checklist;
-      if(d.settings) STATE.settings=Object.assign(STATE.settings,d.settings);
-    }
-  }catch(e){}
-  sanitizeUIFlags();
+      if(Array.isArray(d.trips) && d.trips.length){
+        STATE.trips=d.trips;
+        STATE.activeId=(d.activeId && d.trips.some(t=>t.id===d.activeId))? d.activeId : d.trips[0].id;
+      } else {
+        const t=newTripObj("關西8天");
+        if(Array.isArray(d.days)) t.days=d.days;
+        if(Array.isArray(d.checklist)) t.checklist=d.checklist;
+        if(d.settings) t.settings=Object.assign(t.settings,d.settings);
+        STATE.trips=[t]; STATE.activeId=t.id;
+      }
+    } else { const t=newTripObj("我的行程"); STATE.trips=[t]; STATE.activeId=t.id; }
+  }catch(e){ const t=newTripObj("我的行程"); STATE.trips=[t]; STATE.activeId=t.id; }
+  loadActiveIntoState();
 }
 function sanitizeUIFlags(){
   (STATE.days||[]).forEach(day=>(day.items||[]).forEach(it=>{ it._legEdit=false; it._noteEdit=false; it._legOpen=false; }));
@@ -1519,7 +1590,7 @@ async function changeCode(){
     const oldAuth=await dbf.collection('jpAuthCodes').doc(oldCode).get();
     const userId=(oldAuth.exists && oldAuth.data().userId) || '';
     await dbf.collection('jpAuthCodes').doc(nc).set({status:'active', userId});
-    const clean=JSON.parse(JSON.stringify({days:STATE.days,checklist:STATE.checklist,settings:STATE.settings,updatedAt:Date.now()}));
+    const clean=JSON.parse(JSON.stringify({activeId:STATE.activeId, trips:(syncActiveFromState(),STATE.trips), updatedAt:Date.now()}));
     await dbf.collection('jpUserData').doc(nc).set(clean);
     await dbf.collection('jpAuthCodes').doc(oldCode).delete();
     await dbf.collection('jpUserData').doc(oldCode).delete();
