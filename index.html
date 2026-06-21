@@ -635,7 +635,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v55";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v58";
   buildFlightSelects();
   buildCityTabs();
   ensureTrips();
@@ -1171,6 +1171,95 @@ function applyFallback(fromName,toName,apply,status){
   else { apply({source:'manual',_auto:true,steps:[{mode:'train',line:'',from:'',to:'',mins:'',pass:'no'}],transfers:0,buffer:0,totalMin:null}); }
 }
 /* 內建參考路線（平日約略、非即時） */
+/* ===== 景點抵達資料庫 ＋ 自動組路器（補滿用·參考以 Google 為準） ===== */
+function _t(line,f,t,m,pass){return{mode:'train',line:line,from:f,to:t,mins:m,pass:pass||'jr',tk:''};}
+function _b(line,f,t,m){return{mode:'bus',line:line,from:f,to:t,mins:m,pass:'no',tk:'巴士・班次以 Google 為準'};}
+function _c(line,f,t,m){return{mode:'cable',line:line,from:f,to:t,mins:m,pass:'no',tk:'纜車另購票(JR Pass 不含)'};}
+function _w(m){return{mode:'walk',mins:m};}
+const SPOT_ACCESS=[
+ {k:['燦路都','雅緻','Sunroute','ソプラ','Sopra'],hub:'三宮',leg:[_w(5)]},
+ {k:['VIA INN','ヴィアイン','VIAINN','新大阪西'],hub:'新大阪站',leg:[_w(8)]},
+ {k:['萬翠','万翠','三朝藥師','藥師之湯'],hub:'倉吉站',leg:[_b('日丸巴士 三朝線','倉吉站','三朝溫泉(萬翠樓)',25),_w(2)]},
+ {k:['梅田（大阪站）','梅田','大阪站','大阪駅'],hub:'大阪站',leg:[]},
+ {k:['藍天'],hub:'大阪站',leg:[_w(9)]},
+ {k:['GRAND GREEN','グラングリーン'],hub:'大阪站',leg:[_w(5)]},
+ {k:['中之島'],hub:'大阪站',leg:[_w(15)]},
+ {k:['大阪城'],hub:'大阪站',leg:[_t('JR大阪環狀線','大阪站','大阪城公園站',9,'jr'),_w(3)]},
+ {k:['USJ','環球','ユニバ'],hub:'大阪站',leg:[_t('JR環狀線→ゆめ咲線','大阪站','環球城站',18,'jr'),_w(2)]},
+ {k:['道頓堀','心斎橋','心齋橋','難波','なんば'],hub:'難波',leg:[_w(5)]},
+ {k:['通天閣','新世界'],hub:'難波',leg:[_t('大阪地下鐵 御堂筋線','難波站','動物園前站',5,'no'),_w(3)]},
+ {k:['海遊館','天保山','摩天輪'],hub:'難波',leg:[_t('御堂筋線','難波站','本町站',3,'no'),_t('中央線','本町站','大阪港站',15,'no'),_w(5)]},
+ {k:['清水'],hub:'京都站',leg:[_b('市巴士100/206','京都站前','五条坂',15),_w(10)]},
+ {k:['伏見','稻荷','稲荷'],hub:'京都站',leg:[_t('JR奈良線','京都站','稻荷站',5,'jr'),_w(2)]},
+ {k:['金閣'],hub:'京都站',leg:[_b('市巴士205','京都站前','金閣寺道',40),_w(3)]},
+ {k:['銀閣'],hub:'京都站',leg:[_b('市巴士5/17','京都站前','銀閣寺道',38),_w(5)]},
+ {k:['二条城','二條城'],hub:'京都站',leg:[_t('地下鐵烏丸線','京都站','烏丸御池站',6,'no'),_t('地下鐵東西線','烏丸御池站','二条城前站',2,'no'),_w(3)]},
+ {k:['錦市場','錦'],hub:'京都站',leg:[_t('地下鐵烏丸線','京都站','四条站',4,'no'),_w(5)]},
+ {k:['嵐山','竹林','渡月','嵯峨'],hub:'京都站',leg:[_t('JR嵯峨野線','京都站','嵯峨嵐山站',17,'jr'),_w(7)]},
+ {k:['小火車','トロッコ'],hub:'京都站',leg:[_t('JR嵯峨野線','京都站','嵯峨嵐山站',17,'jr'),_w(3)]},
+ {k:['祇園','八坂'],hub:'京都站',leg:[_b('市巴士100/206','京都站前','祇園',20)]},
+ {k:['任天堂','ニンテンドー'],hub:'京都站',leg:[_t('JR奈良線快速','京都站','宇治站',17,'jr'),_b('巴士/步行(查官網)','宇治站','任天堂博物館',15)]},
+ {k:['鐵道博物館','鉄道博物館'],hub:'京都站',leg:[_t('JR嵯峨野線','京都站','梅小路京都西站',3,'jr'),_w(4)]},
+ {k:['馬賽克','モザイク','ハーバーランド','神戶港','神戸港'],hub:'三宮',leg:[_w(5),_t('地下鐵海岸線','三宮・花時計前站','ハーバーランド站',4,'no'),_w(6)]},
+ {k:['港塔','ポートタワー'],hub:'三宮',leg:[_w(5),_t('地下鐵海岸線','三宮・花時計前站','みなと元町站',2,'no'),_w(5)]},
+ {k:['美利堅','メリケン'],hub:'三宮',leg:[_w(5),_t('地下鐵海岸線','三宮・花時計前站','みなと元町站',2,'no'),_w(6)]},
+ {k:['北野','異人館'],hub:'三宮',leg:[_b('City Loop 觀光巴士','三宮','北野異人館',10),_w(5)]},
+ {k:['南京町','中華街'],hub:'三宮',leg:[_w(10)]},
+ {k:['有馬'],hub:'三宮',leg:[_t('地下鐵+神戶電鐵(經谷上)','三宮站','有馬溫泉站',42,'no')]},
+ {k:['舞子','明石海峽','明石海峡','明石大橋'],hub:'三宮',leg:[_t('JR神戶線 新快速','三宮站','舞子站',14,'jr'),_w(5)]},
+ {k:['六甲'],hub:'三宮',leg:[_t('JR神戶線','三宮站','六甲道站',6,'jr'),_b('市巴士+六甲纜車','六甲道站','六甲山上',38)]},
+ {k:['摩耶','掬星'],hub:'三宮',leg:[_b('市巴士18系統','三宮','摩耶ケーブル下',20),_c('まやビューライン','摩耶ケーブル下','掬星台',10)]},
+ {k:['布引','香草','ハーブ'],hub:'三宮',leg:[_t('地下鐵','三宮站','新神戶站',2,'no'),_w(5),_c('神戶布引纜車','ハーブ園山麓駅','山頂',10)]},
+ {k:['須磨'],hub:'三宮',leg:[_t('JR神戶線','三宮站','須磨站',15,'jr'),_w(3)]},
+ {k:['鳥取砂丘','砂丘'],hub:'鳥取站',leg:[_b('砂丘線巴士(麒麟獅子)','鳥取站','鳥取砂丘',22)]},
+ {k:['砂之美術','砂の美術','砂の'],hub:'鳥取站',leg:[_b('砂丘線巴士','鳥取站','砂之美術館前',22)]},
+ {k:['城跡','鳥取城'],hub:'鳥取站',leg:[_b('久松山方向巴士','鳥取站','鳥取城跡',10)]},
+ {k:['賀露','かろいち'],hub:'鳥取站',leg:[_b('賀露方向巴士','鳥取站','賀露港',22)]},
+ {k:['浦富'],hub:'鳥取站',leg:[_t('JR山陰本線','鳥取站','岩美站',20,'jr'),_b('岩美町營巴士','岩美站','浦富海岸',15)]},
+ {k:['境港','水木'],hub:'米子站',leg:[_t('JR境線','米子站','境港站',45,'jr')]},
+ {k:['柯南','青山剛昌','コナン','由良'],hub:'鳥取站',leg:[_t('JR山陰本線','鳥取站','由良站(柯南站)',38,'jr'),_w(15)]},
+ {k:['三朝','萬翠','万翠'],hub:'倉吉站',leg:[_b('日丸巴士三朝線','倉吉站','三朝溫泉',25),_w(3)]},
+ {k:['皆生'],hub:'米子站',leg:[_b('皆生線巴士','米子站','皆生溫泉',20)]}
+];
+const HUBR={
+ '大阪站|難波':[_t('御堂筋線','大阪站(梅田)','難波站',9,'no')],
+ '難波|天王寺':[_t('御堂筋線','難波站','天王寺站',8,'no')],
+ '大阪站|天王寺':[_t('JR大阪環狀線','大阪站','天王寺站',16,'jr')],
+ '大阪站|京都站':[_t('JR京都線 新快速','大阪站','京都站',30,'jr')],
+ '大阪站|三宮':[_t('JR神戶線 新快速','大阪站','三宮站',22,'jr')],
+ '京都站|三宮':[_t('JR 新快速','京都站','三宮站',50,'jr')],
+ '鳥取站|倉吉站':[_t('JR山陰本線','鳥取站','倉吉站',45,'jr')],
+ '倉吉站|米子站':[_t('JR山陰本線','倉吉站','米子站',25,'jr')],
+ '鳥取站|米子站':[_t('JR山陰本線(特急)','鳥取站','米子站',55,'jr')],
+ '大阪站|鳥取站':[_t('JR特急 超級白兔(はくと)','大阪站','鳥取站',150,'jr')],
+ '三宮|鳥取站':[_t('JR特急 超級白兔(はくと)','三宮站','鳥取站',140,'jr')],
+ '大阪站|倉吉站':[_t('JR特急 超級白兔(はくと)','大阪站','倉吉站',160,'jr')],
+ '三宮|倉吉站':[_t('JR特急 超級白兔(はくと)','三宮站','倉吉站',115,'jr')],
+ '新大阪站|大阪站':[_t('JR京都線','新大阪站','大阪站',4,'jr')],
+ '新大阪站|京都站':[_t('JR京都線 新快速','新大阪站','京都站',22,'jr')],
+ '新大阪站|難波':[_t('大阪地下鐵 御堂筋線','新大阪站','難波站',12,'no')]
+};
+function _revStep(s){ return s.mode==='walk'? Object.assign({},s) : Object.assign({},s,{from:s.to,to:s.from}); }
+function hubRoute(h1,h2){
+  if(h1===h2) return [];
+  if(HUBR[h1+'|'+h2]) return HUBR[h1+'|'+h2].map(s=>Object.assign({},s));
+  if(HUBR[h2+'|'+h1]) return HUBR[h2+'|'+h1].slice().reverse().map(_revStep);
+  // 經大阪站／鳥取站中轉（補組）
+  const via=(x)=>{ const r1=hubRoute(h1,x), r2=hubRoute(x,h2); return (r1&&r2)? r1.concat(r2):null; };
+  return via('大阪站') || via('鳥取站') || via('米子站') || null;
+}
+function _findAccess(name){ const s=name||''; return SPOT_ACCESS.find(e=>e.k.some(k=>s.indexOf(k)>=0))||null; }
+function _mergeWalks(steps){ const out=[]; for(const s of steps){ if(s.mode==='walk'){ if((s.mins||0)<=0) continue; if(out.length&&out[out.length-1].mode==='walk'){ out[out.length-1]={mode:'walk',mins:out[out.length-1].mins+s.mins}; continue; } } out.push(Object.assign({},s)); } return out; }
+function composeAccess(a,b){
+  const A=_findAccess(a), B=_findAccess(b); if(!A||!B) return null;
+  const hr=hubRoute(A.hub,B.hub); if(hr===null) return null;
+  let steps=A.leg.slice().reverse().map(_revStep).concat(hr.map(s=>Object.assign({},s))).concat(B.leg.map(s=>Object.assign({},s)));
+  steps=_mergeWalks(steps);
+  if(!steps.length) return null;
+  const total=steps.reduce((m,s)=>m+(s.mins||0),0);
+  const veh=steps.filter(s=>s.mode!=='walk').length;
+  return {source:'builtin',steps:steps,transfers:Math.max(veh-1,0),buffer:0,totalMin:total,_auto:true};
+}
 function builtinRoute(aName,bName){
   const a=aName||"", b=bName||"";
   const hk=(s,arr)=>arr.some(k=>s.indexOf(k)>=0);
@@ -1211,12 +1300,7 @@ function builtinRoute(aName,bName){
   if(pr(_MAYA,_SUN)) return mk(40,[cb('摩耶空中纜車＋纜車','掬星台','摩耶纜車下站',10,TK_CABLE('星の駅')),bus('神戶市巴士 18系統','摩耶纜車下站','三宮',20,TK_BUS),wk(8)]);
   if(pr(_SUN,_PORT)) return mk(17,[wk(5),train('神戶地下鐵 海岸線','三宮・花時計前站','ハーバーランド站',4,'no'),wk(6)]);
   if(pr(_PORT,_SAN)) return mk(17,[wk(6),train('神戶地下鐵 海岸線','ハーバーランド站','三宮・花時計前站',4,'no'),wk(5)]);
-  if(pr(_SAN,_KURA)) return mk(160,[train('JR特急 超級白兔(はくと)','三宮站','倉吉站',160,'jr',TK_HAKUTO)]);
-  if(pr(_SAN,_TOT)) return mk(140,[train('JR特急 超級白兔(はくと)','三宮站','鳥取站',140,'jr',TK_HAKUTO)]);
-  if(pr(_KURA,_MISASA)) return mk(28,[bus('日丸巴士 三朝線','倉吉站','三朝溫泉',25,TK_BUS),wk(3)]);
-  if(pr(_MISASA,_CONAN)) return mk(52,[bus('日丸巴士 三朝線','三朝溫泉','倉吉站',25,TK_BUS),train('JR山陰本線','倉吉站','由良站(柯南站)',12,'jr'),wk(15)]);
-  if(pr(_MISASA,_TOT)) return mk(52,[bus('日丸巴士 三朝線','三朝溫泉','倉吉站',25,TK_BUS),train('JR山陰本線','倉吉站','鳥取站',27,'jr')]);
-  if(pr(_TOT,_OSA)) return mk(150,[train('JR特急 超級白兔(はくと)','鳥取站','大阪站',150,'jr',TK_HAKUTO)]);
+  // 廣域跨城（三宮/鳥取/大阪/倉吉/三朝之間）移到組路器之後，door-to-door 優先
   // ===== 神戶市內主要景點（手寫・平日約略） =====
   const KB_SAN=['三宮','三ノ宮','三の宮','神戶三宮','神戸三宮','元町'];
   const KB_KITANO=['北野','異人館'];
@@ -1265,6 +1349,19 @@ function builtinRoute(aName,bName){
   if(tp(TT_KURA,TT_CONAN)) return mk(27,[train('JR山陰本線','倉吉站','由良站(柯南站)',12,'jr'),wk(15)]);
   if(tp(TT_MISASA,TT_CONAN)) return mk(52,[bus('日丸巴士 三朝線','三朝溫泉','倉吉站',25,TK_BUS),train('JR山陰本線','倉吉站','由良站(柯南站)',12,'jr'),wk(15)]);
   if(tp(TT_TOT,TT_SAKAI)) return mk(110,[train('JR山陰本線(特急)','鳥取站','米子站',55,'jr'),train('JR境線','米子站','境港站',45,'jr')]);
+  // 鳥取景點之間（補充・直達優先・JR 優先・參考以 Google 為準）
+  const TT_SUNA=['砂之美術','砂の美術','砂の'];        // 砂之美術館
+  const TT_SUNAQ=['鳥取砂丘','砂丘'];                  // 砂丘本體
+  if(tp(TT_SUNAQ,TT_SUNA)) return mk(5,[wk(5)]);       // 砂丘↔砂之美術館：緊鄰步行
+  if(tp(TT_DUNE,TT_KARO))  return mk(18,[bus('日ノ丸 麒麟獅子循環巴士','鳥取砂丘','賀露(かにっこ館/かろいち)',15,TK_BUS),wk(3)]); // 循環巴士可直達(自費)
+  if(tp(TT_DUNE,TT_CASTLE))return mk(36,[bus('砂丘線巴士','鳥取砂丘','鳥取站',22,TK_BUS),bus('久松山方向巴士','鳥取站','鳥取城跡',10,TK_BUS)]);
+  if(tp(TT_KARO,TT_CASTLE))return mk(35,[bus('賀露方向巴士','賀露港','鳥取站',22,TK_BUS),bus('久松山方向巴士','鳥取站','鳥取城跡',10,TK_BUS)]);
+  if(tp(TT_SAKAI,TT_KAIKE))return mk(70,[train('JR境線','境港站','米子站',45,'jr'),bus('日ノ丸巴士 皆生線','米子站','皆生溫泉',20,TK_BUS)]);
+  if(tp(TT_KAIKE,TT_CONAN))return mk(65,[bus('皆生線巴士','皆生溫泉','米子站',20,TK_BUS),train('JR山陰本線','米子站','由良站(柯南站)',30,'jr'),wk(15)]);
+  if(tp(TT_DUNE,TT_CONAN)) return mk(75,[bus('砂丘線巴士','鳥取砂丘','鳥取站',22,TK_BUS),train('JR山陰本線','鳥取站','由良站(柯南站)',38,'jr'),wk(15)]);
+  if(tp(TT_KARO,TT_CONAN)) return mk(75,[bus('賀露方向巴士','賀露港','鳥取站',22,TK_BUS),train('JR山陰本線','鳥取站','由良站(柯南站)',38,'jr'),wk(15)]);
+  if(tp(TT_DUNE,TT_KURA))  return mk(70,[bus('砂丘線巴士','鳥取砂丘','鳥取站',22,TK_BUS),train('JR山陰本線(特急/普通)','鳥取站','倉吉站',45,'jr')]);
+  if(tp(TT_DUNE,TT_MISASA))return mk(95,[bus('砂丘線巴士','鳥取砂丘','鳥取站',22,TK_BUS),train('JR山陰本線','鳥取站','倉吉站',45,'jr'),bus('日丸巴士 三朝線','倉吉站','三朝溫泉',25,TK_BUS)]);
   // ===== 通用主幹（其餘景點） =====
   const OSAKA=['大阪','梅田','難波','道頓堀','通天閣','新世界','海遊館','環球','USJ','心斎橋','天王寺'];
   const KYOTO=['京都','清水','伏見','稻荷','稲荷','金閣','嵐山','祇園','二条'];
@@ -1296,16 +1393,8 @@ function builtinRoute(aName,bName){
       if(c==='osaka') return mk(45,[train('Port Liner','神戶空港','三宮',18,'no'),train('JR神戶線 新快速','三宮站','大阪站',22,'jr')]);
     }
   }
-  // 城市之間
-  if(pair(OSAKA,KYOTO)) return mk(33,[train('JR京都線 新快速','大阪站','京都站',30,'jr')]);
-  if(pair(OSAKA,KOBE))  return mk(25,[train('JR神戶線 新快速','大阪站','三宮站',22,'jr')]);
-  if(pair(KYOTO,KOBE))  return mk(53,[train('JR新快速','京都站','三宮站',50,'jr')]);
-  if(pair(OSAKA,['鳥取'])||pair(['大阪'],['鳥取'])) return mk(155,[train('JR特急 超級白兔(はくと)','大阪站','鳥取站',150,'jr')]);
-  // 在地接駁
-  if(pair(['鳥取站','鳥取駅','鳥取'],['砂丘','砂之美術館','砂の'])) return mk(25,[bus('日丸/日交 砂丘線巴士','鳥取站','鳥取砂丘',22)]);
-  if(hk(a,['六甲'])||hk(b,['六甲'])) return mk(45,[train('JR神戶線','三宮站','六甲道站',6,'jr'),bus('神戶市巴士＋六甲纜車','六甲道站','六甲山上',38)]);
-  if(pair(['有馬'],['三宮','三ノ宮','神戶','神戸','北野','南京'])) return mk(45,[bus('阪急/神姬巴士','三宮','有馬溫泉',42)]);
-  if(pair(['境港','水木'],['米子','鳥取'])) return mk(50,[train('JR境線','米子站','境港站',45,'jr')]);
+  // 城市之間 / 在地接駁 → 移到組路器之後（見下方）
+
   // ===== 大阪市內主要景點（手寫・平日約略） =====
   const OS_UMEDA=['梅田','大阪駅','大阪站','藍天','グラングリーン','GRAND GREEN','中之島'];
   const OS_NAMBA=['難波','なんば','道頓堀','心斎橋','心齋橋'];
@@ -1358,6 +1447,21 @@ function builtinRoute(aName,bName){
   if(yp(KY_KINKAKU,KY_ARASHI)) return mk(40,[bus('京都市巴士 + 嵐電','金閣寺道','嵐山',38,TK_BUS)]);
   if(yp(KY_GION,KY_KINKAKU)) return mk(42,[bus('京都市巴士 12/59 系統','祇園','金閣寺道',40,TK_BUS)]);
   if(yp(KY_ARASHI,KY_FUSHI)) return mk(32,[train('JR嵯峨野線','嵯峨嵐山站','京都站',17,'jr'),train('JR奈良線','京都站','稻荷站',5,'jr')]);
+  const _ca=composeAccess(a,b); if(_ca) return _ca;
+  // 廣域跨城備援（組路器找不到時）
+  if(pr(_SAN,_KURA)) return mk(160,[train('JR特急 超級白兔(はくと)','三宮站','倉吉站',160,'jr',TK_HAKUTO)]);
+  if(pr(_SAN,_TOT)) return mk(140,[train('JR特急 超級白兔(はくと)','三宮站','鳥取站',140,'jr',TK_HAKUTO)]);
+  if(pr(_KURA,_MISASA)) return mk(28,[bus('日丸巴士 三朝線','倉吉站','三朝溫泉',25,TK_BUS),wk(3)]);
+  if(pr(_MISASA,_CONAN)) return mk(52,[bus('日丸巴士 三朝線','三朝溫泉','倉吉站',25,TK_BUS),train('JR山陰本線','倉吉站','由良站(柯南站)',12,'jr'),wk(15)]);
+  if(pr(_MISASA,_TOT)) return mk(52,[bus('日丸巴士 三朝線','三朝溫泉','倉吉站',25,TK_BUS),train('JR山陰本線','倉吉站','鳥取站',27,'jr')]);
+  if(pr(_TOT,_OSA)) return mk(150,[train('JR特急 超級白兔(はくと)','鳥取站','大阪站',150,'jr',TK_HAKUTO)]);
+  // 通用城市之間 / 在地接駁（組路器找不到時的城市級備援）
+  if(pair(OSAKA,KYOTO)) return mk(33,[train('JR京都線 新快速','大阪站','京都站',30,'jr')]);
+  if(pair(OSAKA,KOBE))  return mk(25,[train('JR神戶線 新快速','大阪站','三宮站',22,'jr')]);
+  if(pair(KYOTO,KOBE))  return mk(53,[train('JR新快速','京都站','三宮站',50,'jr')]);
+  if(pair(OSAKA,['鳥取'])||pair(['大阪'],['鳥取'])) return mk(155,[train('JR特急 超級白兔(はくと)','大阪站','鳥取站',150,'jr')]);
+  if(hk(a,['六甲'])||hk(b,['六甲'])) return mk(45,[train('JR神戶線','三宮站','六甲道站',6,'jr'),bus('神戶市巴士＋六甲纜車','六甲道站','六甲山上',38)]);
+  if(pair(['有馬'],['三宮','三ノ宮','神戶','神戸','北野','南京'])) return mk(45,[bus('阪急/神姬巴士','三宮','有馬溫泉',42)]);
   return null;
 }
 function classifyPass(text){
