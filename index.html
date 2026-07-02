@@ -643,7 +643,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v73";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v75";
   buildFlightSelects();
   buildCityTabs();
   ensureTrips();
@@ -801,7 +801,7 @@ async function runSearch(){
       const row=document.createElement("div"); row.className="result-row";
       row.innerHTML=`<div style="min-width:0"><div class="name">${name}${badge}</div><div class="addr" style="color:#c2410c;font-weight:600">${addr}</div></div>`;
       const btn=document.createElement("button"); btn.className="btn small"; btn.textContent="加入";
-      btn.onclick=()=>addSpotToTarget(lat!=null?{name,lat,lng}:{name});
+      btn.onclick=()=>addSpotToTarget(lat!=null?{name,lat,lng,placeId:(p.id||null)}:{name,placeId:(p.id||null)});
       row.appendChild(btn); box.appendChild(row);
     });
     box.insertAdjacentHTML("beforeend",manual);
@@ -870,11 +870,24 @@ function cityClass(it){
 }
 function gmapUrl(from,to){
   if(!from||!to) return "";
-  // 優先用「名字」開圖（座標會落在最近店家，例如錦市場→三木鶏卵）；無名字才用座標
-  const pick=p=>{ const nm=(p.jp||p.name||"").trim(); if(nm){ return encodeURIComponent(/日本|Japan/i.test(nm)?nm:(nm+" 日本")); } return (p.lat!=null&&p.lng!=null)?`${p.lat},${p.lng}`:""; };
-  const o=pick(from), d=pick(to);
-  if(!o||!d) return "";
-  return `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}&travelmode=transit`;
+  const nameOf=p=>{ const nm=(p.jp||p.name||"").trim(); return nm?encodeURIComponent(/日本|Japan/i.test(nm)?nm:(nm+" 日本")):""; };
+  const coordOf=p=>(p.lat!=null&&p.lng!=null)?`${p.lat},${p.lng}`:"";
+  // 有 place_id → 用「名字+place_id」：地點標對、路線也算得出來；沒有 → 退回座標(路線可畫)
+  const ep=p=> p.placeId ? {q:(nameOf(p)||coordOf(p)), pid:p.placeId} : {q:(coordOf(p)||nameOf(p)), pid:null};
+  const O=ep(from), D=ep(to);
+  if(!O.q||!D.q) return "";
+  let u=`https://www.google.com/maps/dir/?api=1&origin=${O.q}&destination=${D.q}&travelmode=transit`;
+  if(O.pid) u+=`&origin_place_id=${O.pid}`;
+  if(D.pid) u+=`&destination_place_id=${D.pid}`;
+  return u;
+}
+function placeUrl(it){
+  if(!it) return "";
+  const nm=(it.jp||it.name||"").trim();
+  if(it.placeId) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(nm||"景點")}&query_place_id=${it.placeId}`;
+  if(nm) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(/日本|Japan/i.test(nm)?nm:(nm+" 日本"))}`;
+  if(it.lat!=null&&it.lng!=null) return `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lng}`;
+  return "";
 }
 function legData(kind,di,ii){
   const day=STATE.days[di];
@@ -1130,9 +1143,11 @@ function renderDays(){
       else if(it._airport==='out') hint=`<div class="ap-hint${day._airportOutLate?' late':''}">建議 ${day._airportOutDeadline||""} 前到機場　${s.retFlightNo?s.retFlightNo+'　':''}${s.departFlight||""} 起飛${day._airportOutLate?"（目前順排恐遲到）":""}</div>`;
       const icon = it._airport?"✈️ ":(it._home?"🏠 ":"");
       const info=(!it._airport&&!it._home)?spotInfo(it.name):null;
+      const pu=(!it._home)?placeUrl(it):"";
+      const puHtml=pu?`<div style="margin-top:3px"><a href="${pu}" target="_blank" rel="noopener" style="font-size:11.5px;color:#c2410c;font-weight:600;text-decoration:none">📍 地圖確認位置</a></div>`:'';
       const infoHtml=info?`<div class="spot-info"><div class="si-h">ℹ️ 景點資訊（參考·以官方為準）</div>${info.o?`<div>🚫 公休：${info.o}</div>`:''}${info.t?`<div>🎟 門票：${info.t}</div>`:''}${info.f?`<div>✨ 特色：${info.f}</div>`:''}</div>`:'';
       stop.innerHTML=`<div class="body"><div>${arr}${hint}<div class="spot-name">${icon}${it.name}</div>
-        <div class="stay-row">停留 <input type="number" class="stay-in" value="${stay}" onchange="setStay(${di},${ii},this.value)"> 分</div>${(it._pinned&&it._leaveAt)?`<div class="canstay${it._catchWarn?' warn':''}">⏰ ${it._catchWarn?'要趕車,最晚 '+it._leaveAt+' 出發':'可待到 '+it._leaveAt+'，再去搭車'}</div>`:''}${it._depIgnored?`<div class="canstay warn">⚠ 發車早於抵達,趕不上,已改自動接(請把發車改晚)</div>`:''}${infoHtml}</div>
+        ${puHtml}<div class="stay-row">停留 <input type="number" class="stay-in" value="${stay}" onchange="setStay(${di},${ii},this.value)"> 分</div>${(it._pinned&&it._leaveAt)?`<div class="canstay${it._catchWarn?' warn':''}">⏰ ${it._catchWarn?'要趕車,最晚 '+it._leaveAt+' 出發':'可待到 '+it._leaveAt+'，再去搭車'}</div>`:''}${it._depIgnored?`<div class="canstay warn">⚠ 發車早於抵達,趕不上,已改自動接(請把發車改晚)</div>`:''}${infoHtml}</div>
         <div class="ctrls">
           <button class="icon-btn" onclick="move(${di},${ii},-1)">↑</button>
           <button class="icon-btn" onclick="move(${di},${ii},1)">↓</button>
