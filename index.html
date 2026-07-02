@@ -351,6 +351,17 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
 .legend span{display:inline-flex;align-items:center;gap:4px}
 .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+@media print {
+  body.exporting > *:not(#exportView){ display:none !important; }
+  body.exporting #exportView{ position:static !important; overflow:visible !important; height:auto !important; display:block !important; background:#fff !important; }
+  body.exporting #exportView > div:first-child{ display:none !important; }
+  body.exporting #exportView, body.exporting #exportView *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  #exportBody{ max-width:none !important; padding:0 !important; }
+  #exportBody .exp-dayhdr{ break-after:avoid; page-break-after:avoid; }
+  #exportBody .exp-daytable{ page-break-inside:auto; }
+  #exportBody .exp-daytable tr{ break-inside:avoid; page-break-inside:avoid; }
+}
+@page { margin: 12mm; }
 </style>
 </head>
 <body>
@@ -403,6 +414,7 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
     <!-- 行程 -->
     <div id="view-trip" class="hidden">
       <button class="btn map-open" onclick="openMapView()">🗺 在地圖上查看順路</button>
+      <button class="btn" onclick="exportItinerary()" style="margin:0 0 10px">📄 匯出行程表</button>
       <div id="dayContainer"></div>
 
       <div class="card">
@@ -414,6 +426,14 @@ label.lbl{font-size:12px;color:var(--muted);font-weight:600;display:block;margin
         </div>
         <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">JR Pass 為系統依路線名稱自動偵測，僅供參考，搭乘前請以車站或官方為準。</p>
       </div>
+    </div>
+
+    <div id="exportView" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;overflow:auto">
+      <div style="position:sticky;top:0;background:#1e293b;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700">📄 行程表（可截圖／列印存 PDF）</span>
+        <button onclick="closeExport()" style="background:#fff;color:#1e293b;border:none;border-radius:8px;padding:6px 12px;font-weight:700">關閉</button>
+      </div>
+      <div id="exportBody" style="padding:14px;max-width:720px;margin:0 auto;color:#0f172a"></div>
     </div>
 
     <!-- 行前清單 -->
@@ -643,7 +663,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v76";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v84";
   buildFlightSelects();
   buildCityTabs();
   ensureTrips();
@@ -694,6 +714,91 @@ function buildFlightSelects(){
 /* ============ 分頁 ============ */
 let DAY_TAB=0, _centerDayTab=false;
 function setDayTab(t){ DAY_TAB=t; _centerDayTab=true; renderDays(); }
+function isHotelName(n){ const s=(n||'').toLowerCase(); return ['via inn','ヴィアイン','新大阪西','燦路都','sunroute','ソプラ','sopra','萬翠','万翠','三朝'].some(k=>s.indexOf(k.toLowerCase())>=0); }
+function spotType(it){ if(!it) return 'spot'; if(it._airport) return 'air'; if(it._home) return 'home'; if(it._type) return it._type; return isHotelName(it.name)?'stay':'spot'; }
+function typeIcon(it){ const t=spotType(it); return t==='air'?'✈️ ':t==='home'?'🏠 ':t==='meal'?'🍽 ':t==='stay'?'🏨 ':'📍 '; }
+function setSpotType(di,ii,t){ const it=STATE.days[di]&&STATE.days[di].items[ii]; if(!it) return; it._type=t; scheduleSave(); renderDays(); }
+function tyBtn(di,ii,t,label,cur){ const on=cur===t; return `<button onclick="setSpotType(${di},${ii},'${t}')" style="font-size:11px;padding:2px 8px;border-radius:10px;cursor:pointer;border:1px solid ${on?'#c2410c':'#e2e8f0'};background:${on?'#fff7ed':'#fff'};color:${on?'#c2410c':'#94a3b8'};font-weight:${on?'700':'400'}">${label}</button>`; }
+const NEED_RESERVE_SPOT=/任天堂|小火車|トロッコ|嵯峨野観光|嵯峨野トロッコ|USJ|環球影城|ユニバーサル|universal|teamlab|チームラボ|和服|着物|舞妓|忍者体驗|忍者体験|ジブリ|吉卜力|阿信茶屋|米其林/i;
+const NEED_RESERVE_TRAIN=/はくと|超級白兔|スーパー/;
+const LTD_EXPRESS=/特急|はるか|遙|HARUKA/i;
+function needReserveSpot(name){ return NEED_RESERVE_SPOT.test(name||''); }
+function spotActionBadge(it){
+  if(!it||it._airport||it._home||spotType(it)==='stay') return '';
+  const nm=it.name||''; const inf=spotInfo(nm);
+  if(needReserveSpot(nm)) return ` <span style="color:#dc2626;font-weight:700;font-size:11px;white-space:nowrap">🔴要預約</span>`;
+  if(inf&&inf.t){ const price=/免費/.test(inf.t)?'免費':inf.t; return ` <span style="color:#166534;font-size:11px;white-space:nowrap">🟢現場 ${price}</span>`; }
+  return '';
+}
+function fmtStepsExport(route){
+  if(!route||!route.steps||!route.steps.length) return '<span style="color:#94a3b8">—</span>';
+  return route.steps.map(s=>{
+    if(s.mode==='walk') return `<span style="color:#475569">🚶 走 ${s.mins}分</span>`;
+    const ic=s.mode==='bus'?'🚌':s.mode==='cable'?'🚠':'🚆';
+    const col=s.mode==='bus'?'#ea580c':s.mode==='cable'?'#7c3aed':(s.pass==='jr'?'#16a34a':'#2563eb');
+    const seg=(s.from&&s.to)?`${s.from}→${s.to} `:'';
+    let status,buy='';
+    if(s.pass==='jr'){
+      status='<span style="color:#16a34a;font-weight:700">✅廣域券</span>';
+      if(NEED_RESERVE_TRAIN.test(s.line||'')){ status+=' <span style="color:#dc2626;font-weight:700">🔴要劃位</span>'; buy=' 💳綠色窗口劃位'; }
+    } else {
+      status='<span style="color:#64748b">✕自費</span>';
+      buy = s.mode==='bus' ? ' 💳IC卡/車上投幣' : (s.mode==='cable' ? ' 💳現場購票' : ' 💳IC卡/售票機');
+    }
+    return `<span style="color:${col};font-weight:700">${ic} ${s.line||''}</span><br><span style="color:#475569;font-size:12px">${seg}${s.mins?s.mins+'分':''}　${status}<span style="color:#94a3b8">${buy}</span></span>`;
+  }).join('<div style="border-top:1px dashed #e2e8f0;margin:5px 0"></div>');
+}
+function exportItinerary(){
+  const t=getActiveTrip(); const title=(t&&t.name)||'行程';
+  let html=`<h1 style="font-size:20px;text-align:center;margin:0 0 4px">${title} · 行程表</h1><p style="text-align:center;color:#64748b;font-size:12px;margin:0 0 10px">🚆JR Pass可用　🚇/🚌自費　時間為約略值，搭乘前請以現場為準</p>`;
+  const todo=[];
+  STATE.days.forEach(day=>day.items.forEach(it=>{
+    if(needReserveSpot(it.name)) todo.push(`${it.name}（預約）`);
+    const r=it._route; if(r&&r.steps) r.steps.forEach(s=>{ if(NEED_RESERVE_TRAIN.test(s.line||'')) todo.push(`${s.line}（劃位）`); });
+  }));
+  const uniq=[...new Set(todo)];
+  if(uniq.length) html+=`<div style="border:2px solid #dc2626;border-radius:10px;padding:8px 12px;margin:0 0 10px;background:#fef2f2"><b style="color:#dc2626">🔴 出發前要先預約 / 劃位：</b><div style="color:#7f1d1d;font-size:13px;margin-top:4px">${uniq.map(x=>'・'+x).join('<br>')}</div></div>`;
+  html+=`<div style="border:1px solid #cbd5e1;border-radius:10px;padding:8px 12px;margin:0 0 14px;background:#f8fafc;font-size:12.5px;color:#334155;line-height:1.7"><b>💳 票券哪裡買</b><br>・<b>IC卡(ICOCA/西瓜卡Suica)</b>：iPhone錢包／Google Pay 可線上加辦＋儲值；實體卡在關西機場或各車站售票機、JR綠色窗口。地鐵/巴士/私鐵自費段刷這張。<br>・<b>JR關西廣域周遊券</b>：先線上訂(JR西日本官網／KKday／Klook)，到關西機場或大阪/京都 JR綠色窗口兌換；或現場綠色窗口購買。JR段(含はるか、はくと)走人工通道出示。<br>・<b>一日券(地鐵/巴士)</b>：各地鐵站、巴士案內所、部分便利商店。<br>・<b>特急劃位(はくと)</b>：JR綠色窗口或售票機，持廣域券免費劃。</div>`;
+  STATE.days.forEach((day,di)=>{
+    const date=dayDate(di)||''; const stay=day.items.find(it=>spotType(it)==='stay');
+    const wd=(date.match(/（([日一二三四五六])）/)||[])[1]||'';
+    html+=`<div style="margin:16px 0 0;background:#1e293b;color:#fff;border-radius:10px 10px 0 0;padding:8px 12px" class="exp-dayhdr"><b>Day ${di+1}</b>　${date}${stay?`　🏨 住宿：${stay.name}`:''}</div>`;
+    const s=STATE.settings||{}; let fl='';
+    if(di===0 && (s.outFlightNo||s.outFromAirport)) fl=`✈ 去程 ${s.outAirline||''} ${s.outFlightNo||''}　${s.outFromAirport||''}→${s.outToAirport||''}　${s.outDepartTime||''}起飛${s.arriveTime?'・'+s.arriveTime+'抵達':''}`;
+    if(di===STATE.days.length-1 && (s.retFlightNo||s.retFromAirport)) fl=`✈ 回程 ${s.retAirline||''} ${s.retFlightNo||''}　${s.retFromAirport||''}→${s.retToAirport||''}　${s.departFlight||''}起飛`;
+    if(fl) html+=`<div style="background:#eef2ff;color:#3730a3;font-size:12px;padding:5px 12px;border:1px solid #e2e8f0;border-top:none">${fl.trim()}</div>`;
+    const seg={早:[],中:[],晚:[]};
+    day.items.forEach((it,ii)=>{ const m=it._arrive?toMin(it._arrive):ii*100; const k=m<11*60?'早':(m<17*60?'中':'晚'); seg[k].push({it,ii}); });
+    html+=`<table class="exp-daytable" style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:2px">`;
+    html+=`<tr><td style="background:#334155;color:#fff;padding:4px 6px;border:1px solid #e2e8f0;width:52px;text-align:center;font-size:11px">時段</td><td style="background:#334155;color:#fff;padding:4px 8px;border:1px solid #e2e8f0;width:38%;font-size:11px">景點</td><td style="background:#334155;color:#fff;padding:4px 8px;border:1px solid #e2e8f0;font-size:11px">怎麼到這裡</td></tr>`;
+    [['早','🌅早上'],['中','🌞中午'],['晚','🌙晚上']].forEach(([k,label])=>{
+      const arr=seg[k]; const hasMeal=arr.some(x=>spotType(x.it)==='meal'); const rows=[];
+      arr.forEach(({it,ii})=>{
+        const at=it._arrive?`<span style="color:#64748b;font-size:11px">${it._arrive}</span><br>`:'';
+        const inf=(!it._airport&&!it._home)?spotInfo(it.name):null;
+        let warn='';
+        if(inf&&inf.o&&wd&&inf.o.indexOf(wd)>=0&&/休|停|閉|定休|公休/.test(inf.o)) warn=`<div style="color:#dc2626;font-weight:700;font-size:11px;margin-top:2px">⚠ 今日(週${wd})恐公休：${inf.o}</div>`;
+        const prev=day.items[ii-1];
+        const tp= ii===0 ? '<span style="color:#94a3b8">—（當日起點）</span>' : fmtStepsExport(prev?prev._route:null);
+        rows.push(`<td style="border:1px solid #e2e8f0;padding:7px;vertical-align:top">${at}${typeIcon(it)}${it.name}${spotActionBadge(it)}${warn}</td><td style="border:1px solid #e2e8f0;padding:7px;vertical-align:top">${tp}</td>`);
+      });
+      if(k==='中'&&!hasMeal) rows.push(`<td style="border:1px solid #e2e8f0;padding:7px;color:#94a3b8">🍽 午餐：＿＿＿＿</td><td style="border:1px solid #e2e8f0"></td>`);
+      if(k==='晚'&&!hasMeal) rows.push(`<td style="border:1px solid #e2e8f0;padding:7px;color:#94a3b8">🍽 晚餐：＿＿＿＿</td><td style="border:1px solid #e2e8f0"></td>`);
+      if(!rows.length) return;
+      rows.forEach((r,idx)=>{
+        if(idx===0) html+=`<tr><td rowspan="${rows.length}" style="border:1px solid #e2e8f0;background:#f1f5f9;font-weight:700;text-align:center;padding:5px;font-size:12px">${label}</td>${r}</tr>`;
+        else html+=`<tr>${r}</tr>`;
+      });
+    });
+    html+=`</table>`;
+  });
+  document.getElementById('exportBody').innerHTML=html;
+  const ev=document.getElementById('exportView'); if(ev.parentNode!==document.body) document.body.appendChild(ev);
+  document.body.classList.add('exporting');
+  ev.style.display='block';
+  window.scrollTo(0,0);
+}
+function closeExport(){ document.getElementById('exportView').style.display='none'; document.body.classList.remove('exporting'); }
 function switchView(v){
   ["trip","flight","list","set"].forEach(x=>{
     document.getElementById("view-"+x).classList.toggle("hidden", x!==v);
@@ -1141,13 +1246,15 @@ function renderDays(){
       let hint="";
       if(it._airport==='in') hint=`<div class="ap-hint">${s.outFlightNo?s.outFlightNo+'　':''}航班抵達 ${s.arriveTime}　（停留含入境·提領行李·走到月台）</div>`;
       else if(it._airport==='out') hint=`<div class="ap-hint${day._airportOutLate?' late':''}">建議 ${day._airportOutDeadline||""} 前到機場　${s.retFlightNo?s.retFlightNo+'　':''}${s.departFlight||""} 起飛${day._airportOutLate?"（目前順排恐遲到）":""}</div>`;
-      const icon = it._airport?"✈️ ":(it._home?"🏠 ":"");
+      const icon = it._airport?"✈️ ":(it._home?"🏠 ":typeIcon(it));
       const info=(!it._airport&&!it._home)?spotInfo(it.name):null;
       const pu=(!it._home)?placeUrl(it):"";
       const puHtml=pu?`<div style="margin-top:3px"><a href="${pu}" target="_blank" rel="noopener" style="font-size:11.5px;color:#c2410c;font-weight:600;text-decoration:none">📍 地圖確認位置</a></div>`:'';
+      const _cty=spotType(it);
+      const tyRow=(it._airport||it._home)?'':`<div style="display:flex;gap:6px;margin:5px 0">${tyBtn(di,ii,'spot','📍景點',_cty)}${tyBtn(di,ii,'meal','🍽餐食',_cty)}${tyBtn(di,ii,'stay','🏨住宿',_cty)}</div>`;
       const infoHtml=info?`<div class="spot-info"><div class="si-h">ℹ️ 景點資訊（參考·以官方為準）</div>${info.o?`<div>🚫 公休：${info.o}</div>`:''}${info.t?`<div>🎟 門票：${info.t}</div>`:''}${info.f?`<div>✨ 特色：${info.f}</div>`:''}</div>`:'';
       stop.innerHTML=`<div class="body"><div>${arr}${hint}<div class="spot-name">${icon}${it.name}</div>
-        ${puHtml}<div class="stay-row">停留 <input type="number" class="stay-in" value="${stay}" onchange="setStay(${di},${ii},this.value)"> 分</div>${(it._pinned&&it._leaveAt)?`<div class="canstay${it._catchWarn?' warn':''}">⏰ ${it._catchWarn?'要趕車,最晚 '+it._leaveAt+' 出發':'可待到 '+it._leaveAt+'，再去搭車'}</div>`:''}${it._depIgnored?`<div class="canstay warn">⚠ 發車早於抵達,趕不上,已改自動接(請把發車改晚)</div>`:''}${infoHtml}</div>
+        ${puHtml}${tyRow}<div class="stay-row">停留 <input type="number" class="stay-in" value="${stay}" onchange="setStay(${di},${ii},this.value)"> 分</div>${(it._pinned&&it._leaveAt)?`<div class="canstay${it._catchWarn?' warn':''}">⏰ ${it._catchWarn?'要趕車,最晚 '+it._leaveAt+' 出發':'可待到 '+it._leaveAt+'，再去搭車'}</div>`:''}${it._depIgnored?`<div class="canstay warn">⚠ 發車早於抵達,趕不上,已改自動接(請把發車改晚)</div>`:''}${infoHtml}</div>
         <div class="ctrls">
           <button class="icon-btn" onclick="move(${di},${ii},-1)">↑</button>
           <button class="icon-btn" onclick="move(${di},${ii},1)">↓</button>
