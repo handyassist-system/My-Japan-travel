@@ -663,7 +663,7 @@ function enterDemo(){ STATE.demo=true; STATE.code=null; startApp(); }
 function startApp(){
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v85";
+  document.getElementById("modeLabel").textContent = (STATE.demo? "示範模式" : "已登入")+" · v86";
   buildFlightSelects();
   buildCityTabs();
   ensureTrips();
@@ -1094,7 +1094,6 @@ function makeLeg(kind,di,ii){
     html+=`<div class="leg-body">`;
     if(it._legEdit) html+=renderLegEditor(di,ii,r);
     else html+=renderLegRead(di,ii,it,r);
-    if(d.gmap) html+=`<a class="gmap-btn" href="${d.gmap}" target="_blank" rel="noopener">在 Google Maps 查這段</a>`;
     html+=`</div>`;
   }
   html+=`</div>`;
